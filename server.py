@@ -23,7 +23,7 @@ def main():
 
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind((HOST, PORT))
-    s.listen()
+    s.listen(1)
 
     # Return connection and client address.
     (conn, addr) = s.accept()
