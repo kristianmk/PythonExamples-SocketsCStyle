@@ -17,19 +17,19 @@ def main():
     # Alternative address families could be AF_INET6 for IPv6, AF_BTH for bluetooth and more..
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # Connect to server (block until accepted)
+    # Connect to server (block until accepted).
     s.connect((HOST, PORT))
 
-    # Send encoded data
+    # Send encoded data.
     s.send(b"Hello world")
 
-    # Receive response
+    # Receive response.
     data = s.recv(1024)
 
-    # Print result
+    # Print result.
     print(data.decode())
 
-    # Close connection
+    # Close connection.
     s.close()
 
 
