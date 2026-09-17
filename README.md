@@ -35,7 +35,7 @@ Both programs use:
 - host `127.0.0.1`
 - port `55556`
 - UTF-8 text
-- one length-prefixed message per connection
+- one request/response exchange per connection, framed with a length prefix
 - a maximum application message size of 1024 bytes
 
 ## Important TCP note

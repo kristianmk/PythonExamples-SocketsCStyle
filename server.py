@@ -68,25 +68,16 @@ def receive_framed_text(sock):
 
 
 def handle_client_connection(conn, addr):
-    print(f"Accepted connection from {addr[0]}:{addr[1]}")
+    client_text = receive_framed_text(conn)
+    if client_text is None:
+        print("Client disconnected before sending any data.")
+        return
 
-    try:
-        client_text = receive_framed_text(conn)
-        if client_text is None:
-            print("Client disconnected before sending any data.")
-            return
+    print(f"Received: {client_text!r}")
 
-        print(f"Received: {client_text!r}")
-
-        response_text = f"Server received: {client_text}"
-        send_framed_text(conn, response_text)
-        print(f"Sent: {response_text!r}")
-
-    except (ConnectionError, UnicodeDecodeError, ValueError) as exc:
-        print(f"Connection handling error for {addr[0]}:{addr[1]}: {exc}")
-    finally:
-        conn.close()
-        print(f"Closed connection from {addr[0]}:{addr[1]}")
+    response_text = f"Server received: {client_text}"
+    send_framed_text(conn, response_text)
+    print(f"Sent: {response_text!r}")
 
 
 def main():
@@ -112,7 +103,15 @@ def main():
             except socket.timeout:
                 continue
 
-            handle_client_connection(conn, addr)
+            print(f"Accepted connection from {addr[0]}:{addr[1]}")
+
+            try:
+                handle_client_connection(conn, addr)
+            except (ConnectionError, UnicodeDecodeError, ValueError) as exc:
+                print(f"Connection handling error for {addr[0]}:{addr[1]}: {exc}")
+            finally:
+                conn.close()
+                print(f"Closed connection from {addr[0]}:{addr[1]}")
 
     except KeyboardInterrupt:
         print("\nServer stopped by user.")
