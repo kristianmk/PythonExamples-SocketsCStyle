@@ -4,44 +4,111 @@
 #
 # Python socket documentation: https://docs.python.org/3/library/socket.html
 #
-# This example purposely created very similar to the C-example here:
-# Better Python version here:
+# This example is intentionally procedural and explicit so it resembles a
+# lower-level C sockets example more than an idiomatic Python version.
 
 import socket
 
 
-HOST = "127.0.0.1"  # localhost
+HOST = "127.0.0.1"
 PORT = 55556
+BACKLOG = 5
+BUFFER_SIZE = 256
+MAX_MESSAGE_BYTES = 1024
+
+
+def send_text_line(sock, text):
+    encoded_text = text.encode("utf-8")
+    if len(encoded_text) > MAX_MESSAGE_BYTES:
+        raise ValueError(
+            f"Refusing to send {len(encoded_text)} bytes; limit is {MAX_MESSAGE_BYTES} bytes."
+        )
+
+    sock.sendall(encoded_text + b"\n")
+
+
+def receive_text_line(sock):
+    received_bytes = bytearray()
+
+    while True:
+        chunk = sock.recv(BUFFER_SIZE)
+        if not chunk:
+            if not received_bytes:
+                return None
+            raise ConnectionError(
+                "Client closed the connection before sending a newline-terminated message."
+            )
+
+        received_bytes.extend(chunk)
+        if len(received_bytes) > MAX_MESSAGE_BYTES:
+            raise ValueError(
+                f"Received more than {MAX_MESSAGE_BYTES} bytes before a newline."
+            )
+
+        newline_index = received_bytes.find(b"\n")
+        if newline_index != -1:
+            if newline_index + 1 != len(received_bytes):
+                raise ValueError(
+                    "Received extra bytes after the first newline. "
+                    "This example supports one text line per connection."
+                )
+
+            message_bytes = bytes(received_bytes[:newline_index])
+            return message_bytes.decode("utf-8")
+
+
+def handle_client_connection(conn, addr):
+    print(f"Accepted connection from {addr[0]}:{addr[1]}")
+
+    try:
+        client_text = receive_text_line(conn)
+        if client_text is None:
+            print("Client disconnected before sending any data.")
+            return
+
+        print(f"Received: {client_text!r}")
+
+        response_text = f"Server received: {client_text}"
+        send_text_line(conn, response_text)
+        print(f"Sent: {response_text!r}")
+
+    except (ConnectionError, UnicodeDecodeError, ValueError) as exc:
+        print(f"Connection handling error for {addr[0]}:{addr[1]}: {exc}")
+    finally:
+        conn.close()
+        print(f"Closed connection from {addr[0]}:{addr[1]}")
 
 
 def main():
-    # Create socket for address family IPv4 (AF_INET), type stream (almost always TCP).
-    # AF_INET, SOCK_STREAM means reliable, sequenced, two-way, connection-oriented, sequenced, byte streams.
-    #
-    # Alternative address families could be AF_INET6 for IPv6, AF_BTH for bluetooth and more..
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_socket = None
 
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((HOST, PORT))
-    s.listen(1)
+    try:
+        print(f"Starting TCP server on {HOST}:{PORT}")
 
-    # Return connection and client address.
-    (conn, addr) = s.accept()
+        # Create a TCP/IPv4 socket explicitly, similar to a C sockets example.
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    while True:
-        # Receive from client, buffer size 1024.
-        data = conn.recv(1024)
-        if not data:
-            # Break out of loop if client stopped.
-            break
-        client_data = data.decode()
-        print(client_data)
-        conn.send((client_data + " from server too!").encode())
+        # Allow quick restart after the process exits.
+        listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_socket.bind((HOST, PORT))
+        listen_socket.listen(BACKLOG)
 
-    # Close connection
-    conn.close()
+        print("Listening for connections. Press Ctrl+C to stop.")
+
+        while True:
+            conn, addr = listen_socket.accept()
+            handle_client_connection(conn, addr)
+
+    except KeyboardInterrupt:
+        print("\nServer stopped by user.")
+    except OSError as exc:
+        print(f"Server socket error: {exc}")
+        raise
+    finally:
+        if listen_socket is not None:
+            listen_socket.close()
+            print("Listening socket closed.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
