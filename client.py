@@ -73,9 +73,9 @@ def main():
 
         response_text, trailing_bytes = received_message
         if trailing_bytes:
-            raise ValueError(
-                "Server sent trailing bytes after the first newline-terminated reply. "
-                "This example supports exactly one response per connection."
+            print(
+                "Ignoring trailing bytes buffered after the first reply because "
+                "this example handles one response per connection."
             )
 
         print(f"Received: {response_text!r}")

@@ -63,9 +63,9 @@ def handle_client_connection(conn, addr):
 
         client_text, trailing_bytes = received_message
         if trailing_bytes:
-            raise ValueError(
-                "Client sent trailing bytes after the first newline-terminated message. "
-                "This example supports exactly one request per connection."
+            print(
+                "Ignoring trailing bytes buffered after the first request because "
+                "this example handles one request per connection."
             )
 
         print(f"Received: {client_text!r}")

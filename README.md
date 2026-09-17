@@ -50,8 +50,9 @@ application-level framing rule:
 - each message ends with a newline (`\n`)
 - code keeps receiving until that newline arrives
 - if more than 1024 bytes arrive before the newline, the connection is rejected
-- because this example allows exactly one application message per connection,
-  any trailing bytes after that first newline are treated as a protocol error
+- after the first newline-terminated message is processed, the example closes
+  the connection instead of continuing to parse later messages on that same
+  stream
 
 This is still intentionally simple, but it avoids the common beginner mistake
 of assuming one `recv()` call always returns one complete message.
@@ -108,6 +109,8 @@ This is intentionally a small teaching example, so the protocol is limited:
 
 - one request and one response per connection
 - newline-delimited UTF-8 text only
+- any later bytes already buffered on that connection are ignored because the
+  example stops after the first framed message
 - no binary payloads
 - no concurrency
 - no TLS / encryption
