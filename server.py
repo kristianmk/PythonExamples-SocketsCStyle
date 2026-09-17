@@ -7,7 +7,6 @@
 # This example is intentionally procedural and explicit so it resembles a
 # lower-level C sockets example more than an idiomatic Python version.
 
-import errno
 import socket
 
 
@@ -99,14 +98,7 @@ def main():
         print("Listening for connections. Press Ctrl+C to stop.")
 
         while True:
-            try:
-                conn, addr = listen_socket.accept()
-            except OSError as exc:
-                if exc.errno == errno.EINTR:
-                    print("\nServer stopped by user.")
-                    break
-                raise
-
+            conn, addr = listen_socket.accept()
             handle_client_connection(conn, addr)
 
     except KeyboardInterrupt:
