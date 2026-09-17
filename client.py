@@ -46,7 +46,8 @@ def receive_text_line(sock):
         newline_index = received_bytes.find(b"\n")
         if newline_index != -1:
             message_bytes = bytes(received_bytes[:newline_index])
-            return message_bytes.decode("utf-8")
+            trailing_bytes = bytes(received_bytes[newline_index + 1 :])
+            return message_bytes.decode("utf-8"), trailing_bytes
 
 
 def main():
@@ -66,9 +67,16 @@ def main():
         # the application-level message ends.
         send_text_line(client_socket, CLIENT_MESSAGE)
 
-        response_text = receive_text_line(client_socket)
-        if response_text is None:
+        received_message = receive_text_line(client_socket)
+        if received_message is None:
             raise ConnectionError("Server closed the connection without sending a reply.")
+
+        response_text, trailing_bytes = received_message
+        if trailing_bytes:
+            raise ValueError(
+                "Server sent trailing bytes after the first newline-terminated reply. "
+                "This example supports exactly one response per connection."
+            )
 
         print(f"Received: {response_text!r}")
 

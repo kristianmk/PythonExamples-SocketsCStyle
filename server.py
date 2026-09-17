@@ -48,17 +48,25 @@ def receive_text_line(sock):
         newline_index = received_bytes.find(b"\n")
         if newline_index != -1:
             message_bytes = bytes(received_bytes[:newline_index])
-            return message_bytes.decode("utf-8")
+            trailing_bytes = bytes(received_bytes[newline_index + 1 :])
+            return message_bytes.decode("utf-8"), trailing_bytes
 
 
 def handle_client_connection(conn, addr):
     print(f"Accepted connection from {addr[0]}:{addr[1]}")
 
     try:
-        client_text = receive_text_line(conn)
-        if client_text is None:
+        received_message = receive_text_line(conn)
+        if received_message is None:
             print("Client disconnected before sending any data.")
             return
+
+        client_text, trailing_bytes = received_message
+        if trailing_bytes:
+            raise ValueError(
+                "Client sent trailing bytes after the first newline-terminated message. "
+                "This example supports exactly one request per connection."
+            )
 
         print(f"Received: {client_text!r}")
 
