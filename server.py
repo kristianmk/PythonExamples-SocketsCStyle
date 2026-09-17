@@ -16,6 +16,7 @@ BACKLOG = 5
 BUFFER_SIZE = 256
 MAX_MESSAGE_BYTES = 1024
 HEADER_SIZE = 4
+ACCEPT_TIMEOUT_SECONDS = 1.0
 
 
 def recv_exactly(sock, byte_count):
@@ -99,13 +100,18 @@ def main():
 
         # Allow quick restart after the process exits.
         listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_socket.settimeout(ACCEPT_TIMEOUT_SECONDS)
         listen_socket.bind((HOST, PORT))
         listen_socket.listen(BACKLOG)
 
         print("Listening for connections. Press Ctrl+C to stop.")
 
         while True:
-            conn, addr = listen_socket.accept()
+            try:
+                conn, addr = listen_socket.accept()
+            except socket.timeout:
+                continue
+
             handle_client_connection(conn, addr)
 
     except KeyboardInterrupt:
