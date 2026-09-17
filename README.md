@@ -103,6 +103,13 @@ each connection in sequence.
 
 Stop the server with `Ctrl+C`.
 
+Expected shutdown output:
+
+```text
+Server stopped by user.
+Listening socket closed.
+```
+
 ## Protocol limitations
 
 This is intentionally a small teaching example, so the protocol is limited:
