@@ -50,6 +50,8 @@ application-level framing rule:
 - each message ends with a newline (`\n`)
 - code keeps receiving until that newline arrives
 - if more than 1024 bytes arrive before the newline, the connection is rejected
+- once the first newline-terminated message is processed, the example closes the
+  connection instead of continuing to parse more application messages
 
 This is still intentionally simple, but it avoids the common beginner mistake
 of assuming one `recv()` call always returns one complete message.

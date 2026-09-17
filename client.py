@@ -45,12 +45,6 @@ def receive_text_line(sock):
 
         newline_index = received_bytes.find(b"\n")
         if newline_index != -1:
-            if newline_index + 1 != len(received_bytes):
-                raise ValueError(
-                    "Received extra bytes after the first newline. "
-                    "This example supports one text line per connection."
-                )
-
             message_bytes = bytes(received_bytes[:newline_index])
             return message_bytes.decode("utf-8")
 
