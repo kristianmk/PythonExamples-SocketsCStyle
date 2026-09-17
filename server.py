@@ -15,63 +15,70 @@ PORT = 55556
 BACKLOG = 5
 BUFFER_SIZE = 256
 MAX_MESSAGE_BYTES = 1024
+HEADER_SIZE = 4
 
 
-def send_text_line(sock, text):
+def recv_exactly(sock, byte_count):
+    received_bytes = bytearray()
+
+    while len(received_bytes) < byte_count:
+        chunk = sock.recv(min(BUFFER_SIZE, byte_count - len(received_bytes)))
+        if not chunk:
+            if not received_bytes:
+                return None
+            raise ConnectionError(
+                f"Client closed the connection after {len(received_bytes)} of "
+                f"{byte_count} expected bytes."
+            )
+
+        received_bytes.extend(chunk)
+
+    return bytes(received_bytes)
+
+
+def send_framed_text(sock, text):
     encoded_text = text.encode("utf-8")
     if len(encoded_text) > MAX_MESSAGE_BYTES:
         raise ValueError(
             f"Refusing to send {len(encoded_text)} bytes; limit is {MAX_MESSAGE_BYTES} bytes."
         )
 
-    sock.sendall(encoded_text + b"\n")
+    header = len(encoded_text).to_bytes(HEADER_SIZE, byteorder="big")
+    sock.sendall(header + encoded_text)
 
 
-def receive_text_line(sock):
-    received_bytes = bytearray()
+def receive_framed_text(sock):
+    header = recv_exactly(sock, HEADER_SIZE)
+    if header is None:
+        return None
 
-    while True:
-        chunk = sock.recv(BUFFER_SIZE)
-        if not chunk:
-            if not received_bytes:
-                return None
-            raise ConnectionError(
-                "Client closed the connection before sending a newline-terminated message."
-            )
+    message_length = int.from_bytes(header, byteorder="big")
+    if message_length > MAX_MESSAGE_BYTES:
+        raise ValueError(
+            f"Received length prefix {message_length}, which exceeds the "
+            f"{MAX_MESSAGE_BYTES}-byte limit."
+        )
 
-        received_bytes.extend(chunk)
-        if len(received_bytes) > MAX_MESSAGE_BYTES:
-            raise ValueError(
-                f"Received more than {MAX_MESSAGE_BYTES} bytes before a newline."
-            )
+    message_bytes = recv_exactly(sock, message_length)
+    if message_bytes is None:
+        raise ConnectionError("Client closed the connection before sending the payload.")
 
-        newline_index = received_bytes.find(b"\n")
-        if newline_index != -1:
-            message_bytes = bytes(received_bytes[:newline_index])
-            trailing_bytes = bytes(received_bytes[newline_index + 1 :])
-            return message_bytes.decode("utf-8"), trailing_bytes
+    return message_bytes.decode("utf-8")
 
 
 def handle_client_connection(conn, addr):
     print(f"Accepted connection from {addr[0]}:{addr[1]}")
 
     try:
-        received_message = receive_text_line(conn)
-        if received_message is None:
+        client_text = receive_framed_text(conn)
+        if client_text is None:
             print("Client disconnected before sending any data.")
             return
-
-        client_text, trailing_bytes = received_message
-        if trailing_bytes:
-            print(
-                "Ignoring trailing bytes buffered after the first request because "
-                "this example handles one request per connection."
-            )
 
         print(f"Received: {client_text!r}")
 
         response_text = f"Server received: {client_text}"
-        send_text_line(conn, response_text)
+        send_framed_text(conn, response_text)
         print(f"Sent: {response_text!r}")
 
     except (ConnectionError, UnicodeDecodeError, ValueError) as exc:

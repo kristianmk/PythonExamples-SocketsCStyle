@@ -35,7 +35,7 @@ Both programs use:
 - host `127.0.0.1`
 - port `55556`
 - UTF-8 text
-- newline-delimited messages
+- one length-prefixed message per connection
 - a maximum application message size of 1024 bytes
 
 ## Important TCP note
@@ -47,12 +47,12 @@ To keep the example simple and correct, this repository uses a small
 application-level framing rule:
 
 - each message is UTF-8 text
-- each message ends with a newline (`\n`)
-- code keeps receiving until that newline arrives
-- if more than 1024 bytes arrive before the newline, the connection is rejected
-- after the first newline-terminated message is processed, the example closes
-  the connection instead of continuing to parse later messages on that same
-  stream
+- each message starts with a 4-byte big-endian length prefix
+- code first receives the 4-byte length, then keeps receiving until the full
+  payload has arrived
+- if the announced payload size is larger than 1024 bytes, the connection is
+  rejected
+- after one request and one response, the connection is closed
 
 This is still intentionally simple, but it avoids the common beginner mistake
 of assuming one `recv()` call always returns one complete message.
@@ -115,9 +115,7 @@ Listening socket closed.
 This is intentionally a small teaching example, so the protocol is limited:
 
 - one request and one response per connection
-- newline-delimited UTF-8 text only
-- any later bytes already buffered on that connection are ignored because the
-  example stops after the first framed message
+- length-prefixed UTF-8 text only
 - no binary payloads
 - no concurrency
 - no TLS / encryption
